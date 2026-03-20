@@ -38,8 +38,11 @@ PostgreSQL database with built-in auth, Row Level Security, and a generated Type
 ### @supabase/ssr
 The official Supabase library for SSR frameworks. It handles the complexity of reading and writing auth session cookies across server components, route handlers, and the proxy layer. Used instead of `@supabase/supabase-js` directly for anything that needs to respect the logged-in user's session.
 
-### Resend (wired later)
-Transactional email for reservation confirmations. The `RESEND_API_KEY` env var is present but not yet used. The `confirmation_sent_at` column and the two-step insert/update pattern in the API route are the placeholder hooks for wiring this in.
+### Resend
+Transactional email for reservation confirmations. Fully wired — `POST /api/reserve` sends a confirmation email immediately after a successful insert. The `ConfirmationEmail` React component at `src/emails/ConfirmationEmail.tsx` is passed directly to `resend.emails.send({ react: ... })`. The `confirmation_sent_at` column is only set if the email send succeeds; a `NULL` value means the email was not sent and the reservation may need recovery (see API Route Design below).
+
+### Vercel
+The intended deployment target. No `vercel.json` is present — the Next.js defaults are sufficient. Secrets live in Vercel's environment variable UI, not committed to the repo.
 
 ---
 
@@ -80,6 +83,9 @@ After a successful sign-in, the login page does `router.replace(next)` instead o
 ### `useSearchParams` wrapped in Suspense
 In Next.js 16, `useSearchParams()` causes client-side rendering up to the nearest Suspense boundary during prerendering. The login page splits into `LoginPage` (the outer shell, wraps in `<Suspense>`) and `LoginForm` (the inner component that calls `useSearchParams`). Without this split the build will warn or fail.
 
+### Server Actions for admin mutations
+The `/admin/reservations` page uses a Server Action (`updateStatus`) to confirm or cancel reservations. The action calls `revalidatePath('/admin/reservations')` so the table re-renders with fresh data immediately. No separate API route is needed — Server Actions are the right tool for form-driven mutations inside authenticated server-rendered pages.
+
 ---
 
 ## Folder Structure
@@ -96,19 +102,43 @@ restaurant-concept/
 │   │   │   │   │                      component. Redirects if no session.
 │   │   │   │   ├── page.tsx           /admin — dashboard placeholder.
 │   │   │   │   └── reservations/
-│   │   │   │       └── page.tsx       /admin/reservations — not yet built.
+│   │   │   │       └── page.tsx       /admin/reservations — reservations table
+│   │   │   │                          with confirm/cancel Server Actions.
 │   │   │   └── login/
 │   │   │       └── page.tsx           /login — public, client component.
 │   │   │
 │   │   ├── (site)/                    Route group — public-facing pages.
-│   │   │   └── page.tsx               / — homepage placeholder.
+│   │   │   ├── _components/
+│   │   │   │   └── NavBar.tsx         Fixed nav bar, scroll-aware background.
+│   │   │   │                          Client component.
+│   │   │   ├── layout.tsx             Site shell — dark background + NavBar.
+│   │   │   ├── page.tsx               / — homepage: hero, intro, menu preview,
+│   │   │   │                          CTA. Server component, fetches appetizers.
+│   │   │   ├── about/
+│   │   │   │   └── page.tsx           /about — static brand story page.
+│   │   │   ├── contact/
+│   │   │   │   └── page.tsx           /contact — address, hours, booking CTA.
+│   │   │   │                          Static.
+│   │   │   ├── menu/
+│   │   │   │   └── page.tsx           /menu — full menu grouped by category.
+│   │   │   │                          Server component, fetches menu_items.
+│   │   │   └── booking/
+│   │   │       └── page.tsx           /booking — reservation form. Client
+│   │   │                              component. POSTs to /api/reserve.
 │   │   │
 │   │   ├── api/
 │   │   │   └── reserve/
-│   │   │       └── route.ts           POST /api/reserve — public booking endpoint.
+│   │   │       └── route.ts           POST /api/reserve — public booking
+│   │   │                              endpoint. Inserts reservation + sends
+│   │   │                              confirmation email via Resend.
 │   │   │
 │   │   ├── globals.css                Tailwind v4 entry point (@import "tailwindcss").
 │   │   └── layout.tsx                 Root layout — html/body, Geist font, metadata.
+│   │
+│   ├── emails/
+│   │   └── ConfirmationEmail.tsx      React email template. Plain HTML tables
+│   │                                  (no @react-email dependency). Renders
+│   │                                  booking details + booking reference.
 │   │
 │   ├── lib/
 │   │   └── supabase/
@@ -128,6 +158,44 @@ restaurant-concept/
 ├── postcss.config.mjs
 └── tsconfig.json
 ```
+
+---
+
+## Public Site Pages
+
+All public pages live in the `(site)` route group and share a dark-aesthetic layout (`bg-[#0a0a0a]`) with a fixed `NavBar`.
+
+| Route | File | Type | Notes |
+|---|---|---|---|
+| `/` | `(site)/page.tsx` | Server | Hero, philosophy intro, appetizer preview (fetched live from DB), CTA |
+| `/menu` | `(site)/menu/page.tsx` | Server | Full menu fetched from DB, grouped by category order: appetizer → main → dessert → drink |
+| `/about` | `(site)/about/page.tsx` | Static | Brand story, two-column copy, closing quote |
+| `/contact` | `(site)/contact/page.tsx` | Static | Address, phone/email, hours, booking CTA link |
+| `/booking` | `(site)/booking/page.tsx` | Client | Reservation form — POSTs to `/api/reserve`, shows confirmation with booking reference on success |
+
+The homepage's menu preview section only renders if the DB returns at least one appetizer. If the DB is empty or the query fails, the section is simply absent — no error state shown to guests.
+
+The menu page uses a fixed category display order (`CATEGORY_ORDER = ['appetizer', 'main', 'dessert', 'drink']`) regardless of database sort order.
+
+---
+
+## Email Template
+
+`src/emails/ConfirmationEmail.tsx` is a React component rendered by Resend. It uses plain HTML `<table>` elements with inline styles — not `@react-email`'s component library — for maximum email client compatibility.
+
+**Props:**
+
+| Prop | Type | Notes |
+|---|---|---|
+| `guestName` | string | |
+| `restaurantName` | string | Pulled from `RESTAURANT_NAME` env var at send time |
+| `reservationDate` | string | `YYYY-MM-DD` as stored |
+| `reservationTime` | string | `HH:MM` or `HH:MM:SS` as stored |
+| `partySize` | number | |
+| `specialRequests` | `string \| null` | Row only renders if non-null |
+| `reservationId` | string | UUID — first 8 chars uppercased as the booking reference |
+
+The booking reference shown in the email (`reservationId.slice(0, 8).toUpperCase()`) matches what the booking confirmation page shows the guest, so they can quote the same reference when contacting the restaurant.
 
 ---
 
@@ -189,6 +257,7 @@ Next.js includes any environment variable prefixed `NEXT_PUBLIC_` in the client 
 
 - `NEXT_PUBLIC_SUPABASE_URL` — safe, the URL is not a secret.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — safe by design, anon key is public.
+- `NEXT_PUBLIC_RESTAURANT_ID` — safe, a UUID that identifies which restaurant to book. Used by the booking form client-side. Not a secret.
 - `SUPABASE_SERVICE_ROLE_KEY` — no `NEXT_PUBLIC_` prefix, server only.
 - `RESEND_API_KEY` — no `NEXT_PUBLIC_` prefix, server only.
 
@@ -222,45 +291,43 @@ Located at `src/app/api/reserve/route.ts`. Public endpoint — no auth required,
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `guestName` | string | Yes | |
-| `guestEmail` | string | Yes | Validated against email regex |
-| `guestPhone` | string | Yes | |
+| `guestName` | string | Yes | Trimmed before storage |
+| `guestEmail` | string | Yes | Validated against email regex; lowercased before storage |
+| `guestPhone` | string | No | Optional — stored as `null` if absent or blank |
 | `restaurantId` | string (UUID) | Yes | Foreign key into `restaurants` |
 | `reservationDate` | string | Yes | `YYYY-MM-DD` |
 | `reservationTime` | string | Yes | `HH:MM` or `HH:MM:SS` |
 | `partySize` | number | Yes | Positive integer |
-| `specialRequests` | string | No | Stored as null if blank |
+| `specialRequests` | string | No | Stored as `null` if absent or blank |
+
+`guestPhone` is optional. The booking form omits it from the request body entirely if the field is blank. The API accepts its absence without error.
 
 **Validation order:**
 1. JSON parse — returns `400` if body is not valid JSON.
-2. Bulk missing-field check — returns all missing field names in one response so the caller can fix everything at once.
+2. Bulk missing-field check — returns all missing required field names in one response so the caller can fix everything at once.
 3. Per-field format validation — email regex, date regex + `Date.parse`, time regex, integer check.
-4. Database insert.
-5. `confirmation_sent_at` update.
+4. Database insert via service role client.
+5. Confirmation email via Resend.
+6. If email succeeds: `UPDATE reservation SET confirmation_sent_at = now()`.
 
 **Responses:**
-- `201` — `{ id: string }` — reservation created.
+- `201` — `{ id: string }` — reservation created (email may or may not have sent).
 - `400` — `{ error: string, fields?: string[] }` — client error.
 - `500` — `{ error: string }` — database failure.
 
+A failed email send is logged but does not change the response — the guest still gets `201`. `confirmation_sent_at` stays `NULL` if the email failed, enabling recovery (see below).
+
 ### The `confirmation_sent_at` failure recovery pattern
 
-The API performs two database operations after validation:
+The API performs these operations after validation:
 
 ```
-1. INSERT reservation (without confirmation_sent_at)
-2. UPDATE reservation SET confirmation_sent_at = now()
+1. INSERT reservation (confirmation_sent_at not set)
+2. await resend.emails.send(...)
+3. If step 2 succeeded: UPDATE reservation SET confirmation_sent_at = now()
 ```
 
-These are deliberately separate, not a single insert-with-value. The reason: when Resend is wired in, step 2 becomes:
-
-```
-1. INSERT reservation
-2. await sendConfirmationEmail(...)   ← Resend call goes here
-3. UPDATE reservation SET confirmation_sent_at = now()
-```
-
-If the email send fails, `confirmation_sent_at` stays `NULL`. A recovery job can find all unconfirmed reservations with:
+The update in step 3 only happens when the email actually sent. If the email fails, `confirmation_sent_at` stays `NULL`. A recovery job can find all unconfirmed reservations with:
 
 ```sql
 SELECT * FROM reservations
@@ -270,7 +337,7 @@ WHERE confirmation_sent_at IS NULL
 
 A partial index exists for this query: `idx_reservations_unconfirmed` on `(restaurant_id, created_at) WHERE confirmation_sent_at IS NULL`. When a row is confirmed, it falls out of the index automatically.
 
-The `updateError` from step 2 is currently logged but treated as non-fatal. The reservation was created — a failed timestamp update should not 500 the guest. When Resend is wired in, re-evaluate whether a failed email should be surfaced differently.
+The `updateError` from step 3 is logged but treated as non-fatal — the reservation was created and the email was sent. A failed timestamp write should not 500 the guest.
 
 ---
 
@@ -297,27 +364,30 @@ NEXT_PUBLIC_SUPABASE_URL=         # Public, goes in client bundle
 NEXT_PUBLIC_SUPABASE_ANON_KEY=    # Public, goes in client bundle, limited by RLS
 SUPABASE_SERVICE_ROLE_KEY=        # SECRET — server only, bypasses RLS
 
-# Resend — transactional email (not yet wired)
+# Resend — transactional email
 RESEND_API_KEY=                   # SECRET — server only
-RESEND_FROM_EMAIL=                # The from address for outgoing email
+RESEND_FROM_EMAIL=                # The from address for outgoing email (e.g. reservations@yourdomain.com)
 
 # Restaurant config
-RESTAURANT_NAME=                  # Display name, e.g. "The Grand Table"
-RESTAURANT_SLUG=                  # URL slug, e.g. "the-grand-table"
-RESTAURANT_EMAIL=                 # Contact email shown to guests
-RESTAURANT_TIMEZONE=              # IANA timezone, e.g. "America/New_York"
+NEXT_PUBLIC_RESTAURANT_ID=        # UUID of the restaurant row in the restaurants table.
+                                  # Used by the booking form client-side to populate restaurantId.
+                                  # Not a secret.
+RESTAURANT_NAME=                  # Display name used in confirmation emails, e.g. "The Grand Table"
+RESTAURANT_SLUG=                  # URL slug, e.g. "the-grand-table" (reserved for future use)
+RESTAURANT_EMAIL=                 # Contact email shown to guests (reserved for future use)
+RESTAURANT_TIMEZONE=              # IANA timezone, e.g. "America/New_York" (reserved for future use)
 
 # App
 NEXT_PUBLIC_APP_URL=              # Base URL, used for absolute links in emails
 ```
 
+`NEXT_PUBLIC_RESTAURANT_ID` must be a valid UUID that exists in the `restaurants` table. The booking form sends it as `restaurantId` in the POST body, and the API validates it against the DB before inserting.
+
 ---
 
 ## What Is Not Built Yet
 
-- `/admin/reservations` page — the route exists in the nav but the file does not.
-- Public reservation form — guests currently have no UI to hit `POST /api/reserve`.
-- Resend integration — `confirmation_sent_at` is set immediately as a placeholder.
 - Sign-out — no sign-out button in the admin sidebar yet.
-- Menu management — `menu_items` table exists but no admin UI or public display.
-- `restaurants` table seed — the `restaurant_id` in API requests must be a valid UUID from the `restaurants` table. No seed script exists yet.
+- Menu management — `menu_items` table exists and the public menu page reads from it, but there is no admin UI to create or edit items.
+- `restaurants` table seed — `NEXT_PUBLIC_RESTAURANT_ID` must match a row in `restaurants`. No seed script exists; the row must be inserted manually via the Supabase dashboard or SQL editor.
+- Admin dashboard (`/admin`) — the page exists but shows only a placeholder. No summary stats or quick actions yet.
