@@ -22,6 +22,11 @@ const INITIAL: FormState = {
   specialRequests: '',
 }
 
+const inputClass =
+  'w-full bg-[#111] border border-white/10 px-4 py-3 text-sm text-[#f5f0e8] placeholder-white/20 focus:border-[#c9a96e] focus:outline-none transition-colors duration-200'
+
+const labelClass = 'block text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/50 mb-2'
+
 export default function BookingPage() {
   const [form, setForm] = useState<FormState>(INITIAL)
   const [loading, setLoading] = useState(false)
@@ -79,25 +84,29 @@ export default function BookingPage() {
 
   if (reservationId) {
     return (
-      <main className="flex min-h-full items-center justify-center px-4 py-16">
+      <main className="flex min-h-screen items-center justify-center px-6 py-24 pt-32">
         <div className="w-full max-w-sm text-center">
-          <div className="mb-4 text-4xl">&#10003;</div>
-          <h1 className="mb-2 text-2xl font-semibold tracking-tight text-gray-900">
-            You&apos;re booked!
+          <p className="mb-6 text-4xl text-[#c9a96e]">✓</p>
+          <h1 className="mb-4 font-serif text-3xl font-normal text-[#f5f0e8]">
+            You&apos;re booked.
           </h1>
-          <p className="mb-6 text-sm text-gray-500">
-            We&apos;ll send a confirmation to your email address shortly.
+          <p className="mb-10 text-sm leading-relaxed text-[#f5f0e8]/50">
+            A confirmation has been sent to your email address.
           </p>
-          <p className="rounded-md bg-gray-100 px-4 py-3 text-left text-xs text-gray-500">
-            Reservation ID:{' '}
-            <span className="font-mono text-gray-700">{reservationId}</span>
-          </p>
+          <div className="border border-white/10 px-6 py-4 text-left">
+            <p className="mb-1 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40">
+              Booking reference
+            </p>
+            <p className="font-mono text-sm text-[#c9a96e]">
+              {reservationId.slice(0, 8).toUpperCase()}
+            </p>
+          </div>
           <button
             onClick={() => {
               setForm(INITIAL)
               setReservationId(null)
             }}
-            className="mt-6 text-sm text-gray-500 underline underline-offset-4 hover:text-gray-900"
+            className="mt-8 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40 underline underline-offset-4 transition-colors hover:text-[#f5f0e8]"
           >
             Make another reservation
           </button>
@@ -107,19 +116,17 @@ export default function BookingPage() {
   }
 
   return (
-    <main className="flex min-h-full items-center justify-center px-4 py-16">
+    <main className="flex min-h-screen items-start justify-center px-6 pb-24 pt-36">
       <div className="w-full max-w-lg">
-        <h1 className="mb-2 text-3xl font-semibold tracking-tight text-gray-900">
-          Reserve a table
+        <p className="mb-5 text-xs tracking-[0.35em] uppercase text-[#c9a96e]">Reservations</p>
+        <h1 className="mb-10 font-serif text-4xl font-normal text-[#f5f0e8] md:text-5xl">
+          Reserve a Table
         </h1>
-        <p className="mb-8 text-sm text-gray-500">
-          Fill in your details and we&apos;ll hold a table for you.
-        </p>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Name */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="guestName" className="text-sm font-medium text-gray-700">
+          <div>
+            <label htmlFor="guestName" className={labelClass}>
               Full name
             </label>
             <input
@@ -130,13 +137,13 @@ export default function BookingPage() {
               required
               value={form.guestName}
               onChange={handleChange}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className={inputClass}
             />
           </div>
 
           {/* Email */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="guestEmail" className="text-sm font-medium text-gray-700">
+          <div>
+            <label htmlFor="guestEmail" className={labelClass}>
               Email
             </label>
             <input
@@ -147,15 +154,15 @@ export default function BookingPage() {
               required
               value={form.guestEmail}
               onChange={handleChange}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className={inputClass}
             />
           </div>
 
           {/* Phone */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="guestPhone" className="text-sm font-medium text-gray-700">
+          <div>
+            <label htmlFor="guestPhone" className={labelClass}>
               Phone{' '}
-              <span className="font-normal text-gray-400">(optional)</span>
+              <span className="normal-case tracking-normal text-[#f5f0e8]/30">(optional)</span>
             </label>
             <input
               id="guestPhone"
@@ -164,14 +171,14 @@ export default function BookingPage() {
               autoComplete="tel"
               value={form.guestPhone}
               onChange={handleChange}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className={inputClass}
             />
           </div>
 
           {/* Date + Time */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1">
-              <label htmlFor="reservationDate" className="text-sm font-medium text-gray-700">
+            <div>
+              <label htmlFor="reservationDate" className={labelClass}>
                 Date
               </label>
               <input
@@ -181,12 +188,11 @@ export default function BookingPage() {
                 required
                 value={form.reservationDate}
                 onChange={handleChange}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className={inputClass}
               />
             </div>
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="reservationTime" className="text-sm font-medium text-gray-700">
+            <div>
+              <label htmlFor="reservationTime" className={labelClass}>
                 Time
               </label>
               <input
@@ -196,14 +202,14 @@ export default function BookingPage() {
                 required
                 value={form.reservationTime}
                 onChange={handleChange}
-                className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className={inputClass}
               />
             </div>
           </div>
 
           {/* Party size */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="partySize" className="text-sm font-medium text-gray-700">
+          <div>
+            <label htmlFor="partySize" className={labelClass}>
               Party size
             </label>
             <select
@@ -212,10 +218,10 @@ export default function BookingPage() {
               required
               value={form.partySize}
               onChange={handleChange}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className={inputClass}
             >
               {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
-                <option key={n} value={n}>
+                <option key={n} value={n} className="bg-[#111]">
                   {n} {n === 1 ? 'guest' : 'guests'}
                 </option>
               ))}
@@ -223,10 +229,10 @@ export default function BookingPage() {
           </div>
 
           {/* Special requests */}
-          <div className="flex flex-col gap-1">
-            <label htmlFor="specialRequests" className="text-sm font-medium text-gray-700">
+          <div>
+            <label htmlFor="specialRequests" className={labelClass}>
               Special requests{' '}
-              <span className="font-normal text-gray-400">(optional)</span>
+              <span className="normal-case tracking-normal text-[#f5f0e8]/30">(optional)</span>
             </label>
             <textarea
               id="specialRequests"
@@ -234,12 +240,12 @@ export default function BookingPage() {
               rows={3}
               value={form.specialRequests}
               onChange={handleChange}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className={inputClass}
             />
           </div>
 
           {error && (
-            <p role="alert" className="text-sm text-red-600">
+            <p role="alert" className="text-sm text-red-400">
               {error}
             </p>
           )}
@@ -247,9 +253,9 @@ export default function BookingPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-md bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-50"
+            className="mt-2 border border-[#c9a96e] px-6 py-4 text-xs tracking-[0.2em] uppercase text-[#c9a96e] transition-colors duration-200 hover:bg-[#c9a96e] hover:text-[#0a0a0a] disabled:opacity-40"
           >
-            {loading ? 'Reserving…' : 'Reserve table'}
+            {loading ? 'Reserving…' : 'Reserve Table'}
           </button>
         </form>
       </div>
