@@ -28,9 +28,9 @@ function err(message: string, status: number) {
 
 export async function POST(request: Request) {
   // Parse body
-  let body: Record<string, unknown>
+  let body: { guestName: string; guestEmail: string; guestPhone?: string; restaurantId: string; reservationDate: string; reservationTime: string; partySize: number; specialRequests?: string }
   try {
-    body = await request.json()
+    body = await request.json() as typeof body
   } catch {
     return err('Request body must be valid JSON', 400)
   }
