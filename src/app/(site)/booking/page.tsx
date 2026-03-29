@@ -22,6 +22,35 @@ const INITIAL: FormState = {
   specialRequests: '',
 }
 
+// Dinner service: 5:00 PM – 9:30 PM, 30-min intervals
+const TIME_SLOTS = Array.from({ length: 10 }, (_, i) => {
+  const totalMinutes = 17 * 60 + i * 30
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  const value = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  const hour12 = h > 12 ? h - 12 : h
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const label = `${hour12}:${String(m).padStart(2, '0')} ${ampm}`
+  return { value, label }
+})
+
+function todayString() {
+  return new Date().toISOString().split('T')[0]
+}
+
+function formatDate(dateStr: string) {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-US', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+  })
+}
+
+function formatTime(timeStr: string) {
+  const slot = TIME_SLOTS.find((s) => s.value === timeStr)
+  return slot ? slot.label : timeStr
+}
+
 const inputClass =
   'w-full bg-[#111] border border-white/10 px-4 py-3 text-sm text-[#f5f0e8] placeholder-white/20 focus:border-[#c9a96e] focus:outline-none transition-colors duration-200'
 
@@ -32,6 +61,8 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reservationId, setReservationId] = useState<string | null>(null)
+  const [confirmedDetails, setConfirmedDetails] = useState<FormState | null>(null)
+  const [copied, setCopied] = useState(false)
 
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -74,6 +105,7 @@ export default function BookingPage() {
         return
       }
 
+      setConfirmedDetails(form)
       setReservationId(data.id)
     } catch {
       setError('Could not reach the server. Please check your connection and try again.')
@@ -83,6 +115,13 @@ export default function BookingPage() {
   }
 
   if (reservationId) {
+    const ref = reservationId.slice(0, 8).toUpperCase()
+    function handleCopy() {
+      navigator.clipboard.writeText(ref).then(() => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      })
+    }
     return (
       <main className="flex min-h-screen items-center justify-center px-6 py-24 pt-32">
         <div className="w-full max-w-sm text-center">
@@ -90,20 +129,58 @@ export default function BookingPage() {
           <h1 className="mb-4 font-serif text-3xl font-normal text-[#f5f0e8]">
             You&apos;re booked.
           </h1>
-          <p className="mb-10 text-sm leading-relaxed text-[#f5f0e8]/50">
+          <p className="mb-8 text-sm leading-relaxed text-[#f5f0e8]/50">
             A confirmation has been sent to your email address.
           </p>
-          <div className="border border-white/10 px-6 py-4 text-left">
+
+          {/* Booking details */}
+          {confirmedDetails && (
+            <div className="mb-6 border border-white/10 px-6 py-4 text-left space-y-3">
+              <div>
+                <p className="mb-1 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40">Name</p>
+                <p className="text-sm text-[#f5f0e8]">{confirmedDetails.guestName}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40">Date</p>
+                <p className="text-sm text-[#f5f0e8]">{formatDate(confirmedDetails.reservationDate)}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40">Time</p>
+                <p className="text-sm text-[#f5f0e8]">{formatTime(confirmedDetails.reservationTime)}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40">Party size</p>
+                <p className="text-sm text-[#f5f0e8]">
+                  {confirmedDetails.partySize} {confirmedDetails.partySize === '1' ? 'guest' : 'guests'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Booking reference — tap to copy */}
+          <button
+            onClick={handleCopy}
+            title="Tap to copy"
+            className="relative w-full border border-white/10 px-6 py-4 text-left transition-colors duration-200 hover:border-[#c9a96e]/40 group"
+          >
             <p className="mb-1 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40">
-              Booking reference
+              Booking reference{' '}
+              <span className="normal-case tracking-normal text-[#f5f0e8]/20 group-hover:text-[#f5f0e8]/40 transition-colors">
+                — tap to copy
+              </span>
             </p>
-            <p className="font-mono text-sm text-[#c9a96e]">
-              {reservationId.slice(0, 8).toUpperCase()}
-            </p>
-          </div>
+            <p className="font-mono text-sm text-[#c9a96e]">{ref}</p>
+            {copied && (
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs tracking-[0.1em] uppercase text-[#c9a96e]">
+                Copied!
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => {
               setForm(INITIAL)
+              setConfirmedDetails(null)
               setReservationId(null)
             }}
             className="mt-8 text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/40 underline underline-offset-4 transition-colors hover:text-[#f5f0e8]"
@@ -186,6 +263,7 @@ export default function BookingPage() {
                 name="reservationDate"
                 type="date"
                 required
+                min={todayString()}
                 value={form.reservationDate}
                 onChange={handleChange}
                 className={inputClass}
@@ -195,17 +273,26 @@ export default function BookingPage() {
               <label htmlFor="reservationTime" className={labelClass}>
                 Time
               </label>
-              <input
+              <select
                 id="reservationTime"
                 name="reservationTime"
-                type="time"
                 required
                 value={form.reservationTime}
                 onChange={handleChange}
                 className={inputClass}
-              />
+              >
+                <option value="" disabled className="bg-[#111]">Select time</option>
+                {TIME_SLOTS.map(({ value, label }) => (
+                  <option key={value} value={value} className="bg-[#111]">
+                    {label}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
+          <p className="text-xs text-[#f5f0e8]/30 -mt-3">
+            Dinner service: Tuesday – Sunday, 5:00 PM – 10:00 PM
+          </p>
 
           {/* Party size */}
           <div>
@@ -257,6 +344,9 @@ export default function BookingPage() {
           >
             {loading ? 'Reserving…' : 'Reserve Table'}
           </button>
+          <p className="text-xs text-[#f5f0e8]/20 text-center">
+            Note: Operating hours are fully customizable per client.
+          </p>
         </form>
       </div>
     </main>

@@ -39,7 +39,7 @@ export default function NavBar() {
             <Link
               key={href}
               href={href}
-              className="text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/60 transition-colors duration-200 hover:text-[#f5f0e8]"
+              className="hidden md:block text-xs tracking-[0.15em] uppercase text-[#f5f0e8]/60 transition-colors duration-200 hover:text-[#f5f0e8]"
             >
               {label}
             </Link>
