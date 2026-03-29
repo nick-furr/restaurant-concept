@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Grand Table — Restaurant Concept
 
-## Getting Started
+A full-stack restaurant website with real reservations, email confirmations, and a protected admin dashboard.
 
-First, run the development server:
+**Live demo:** [restaurant.nickfurr.com](https://restaurant.nickfurr.com)
+
+---
+
+## About
+
+This is a concept project built by [Nick Furr](https://nickfurr.com) as a portfolio piece. It demonstrates a production-style restaurant website — not a template or tutorial. Every feature listed below is fully implemented: the booking form writes to a real database, the confirmation email actually sends, and the admin dashboard is protected behind real authentication.
+
+---
+
+## Features
+
+- **Online reservations** — guests submit booking requests through a public form; data is validated server-side and written to a PostgreSQL database
+- **Email confirmations** — a transactional confirmation email is sent to guests immediately after booking via Resend, including a unique booking reference
+- **Admin dashboard** — password-protected area where restaurant staff can view reservations and update their status (confirm or cancel)
+- **Public menu** — full menu fetched live from the database, grouped by category (appetizers, mains, desserts, drinks)
+- **Multi-page public site** — homepage with menu preview, about page, contact page, and booking page; dark fine-dining aesthetic throughout
+- **Two-layer auth** — proxy-level redirect guard plus server component session check on every admin route
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 16 (App Router) |
+| Language | TypeScript 5 (strict mode) |
+| UI | React 19, Tailwind CSS v4 |
+| Database | Supabase (PostgreSQL + Row Level Security) |
+| Auth | Supabase Auth (`@supabase/ssr`) |
+| Email | Resend |
+| Deployment | Vercel |
+
+---
+
+## Local Development
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Set environment variables
+
+Create a `.env.local` file in the project root:
+
+```bash
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+
+# Resend
+RESEND_API_KEY=
+RESEND_FROM_EMAIL=
+
+# Restaurant config
+NEXT_PUBLIC_RESTAURANT_ID=   # UUID of the row in the restaurants table
+RESTAURANT_NAME=             # e.g. "The Grand Table"
+NEXT_PUBLIC_APP_URL=         # e.g. http://localhost:3000
+```
+
+You'll need a Supabase project with the migrations in `supabase/migrations/` applied, and a row inserted into the `restaurants` table. The `NEXT_PUBLIC_RESTAURANT_ID` must match that row's UUID.
+
+### 3. Run the dev server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project Structure
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/app/
+  (site)/          Public-facing pages (/, /menu, /about, /contact, /booking)
+  (admin)/         Protected admin pages (/admin, /admin/reservations) + /login
+  api/reserve/     POST endpoint — validates and inserts reservations
+src/emails/        Transactional email template (rendered by Resend)
+src/lib/supabase/  Browser and server Supabase client helpers
+supabase/
+  migrations/      001_schema.sql (tables + triggers), 002_rls.sql (RLS policies)
+```
