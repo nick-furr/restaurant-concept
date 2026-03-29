@@ -13,8 +13,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://restaurant.nickfurr.com"),
   title: "The Grand Table",
-  description: "Reserve your table at The Grand Table.",
+  description:
+    "Full-stack restaurant concept with online reservations, automated email confirmations via Resend, and a protected owner dashboard. Built with Next.js, TypeScript, and Supabase.",
+  openGraph: {
+    title: "The Grand Table",
+    description:
+      "Full-stack restaurant concept with online reservations, automated email confirmations via Resend, and a protected owner dashboard. Built with Next.js, TypeScript, and Supabase.",
+    url: "https://restaurant.nickfurr.com",
+    siteName: "Nick Furr — Portfolio",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "The Grand Table — Fine Dining Concept",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "The Grand Table",
+    description:
+      "Full-stack restaurant concept with online reservations, automated email confirmations via Resend, and a protected owner dashboard. Built with Next.js, TypeScript, and Supabase.",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default function RootLayout({
