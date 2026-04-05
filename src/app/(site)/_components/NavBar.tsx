@@ -29,12 +29,12 @@ export default function NavBar() {
       <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-6">
         <Link
           href="/"
-          className="font-serif text-sm tracking-[0.25em] uppercase text-[#f5f0e8]"
+          className="font-serif text-sm tracking-[0.1em] sm:tracking-[0.25em] uppercase text-[#f5f0e8] min-w-0"
         >
           The Grand Table
         </Link>
 
-        <div className="flex items-center gap-10">
+        <div className="flex items-center gap-10 shrink-0">
           {NAV_LINKS.map(({ label, href }) => (
             <Link
               key={href}
