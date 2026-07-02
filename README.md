@@ -1,6 +1,6 @@
 # AKANE 茜 — Sushi, Tribeca
 
-A full-stack restaurant website with real reservations, email confirmations, and a protected admin dashboard.
+A full-stack restaurant website with reservations, email confirmations, and a protected admin dashboard.
 
 **Live demo:** [akane.nickfurr.com](https://akane.nickfurr.com)
 
